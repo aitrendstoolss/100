@@ -1,0 +1,248 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tool {
+  id               String            @id @default(uuid())
+  name             String
+  slug             String            @unique
+  logo             String            // Icon name or image URL
+  description      String
+  shortDescription String
+  category         String            // Main category slug or name
+  subcategory      String            @default("")
+  tags             String            // Comma-separated list
+  pricingModel     String            // 'free' | 'freemium' | 'paid'
+  priceRange       String            // e.g., "$10 - $50/mo"
+  websiteUrl       String
+  affiliateUrl     String?
+  rating           Float             @default(0.0)
+  reviewCount      Int               @default(0)
+  features         String            // JSON stringified list of features
+  pros             String            // JSON stringified list of pros
+  cons             String            // JSON stringified list of cons
+  status           String            // 'active' | 'pending' | 'inactive'
+  launchDate       DateTime          @default(now())
+  lastUpdated      String            @default("")
+  trending         Boolean           @default(false)
+  featured         Boolean           @default(false)
+  verified         Boolean           @default(false)
+  viewCount        Int               @default(0)
+  saveCount        Int               @default(0)
+  seoTitle         String?
+  seoDescription   String?
+  developerInfo    String?           // JSON string of developer info
+  alternatives     String            // Comma-separated list of tool IDs or slugs
+  relatedTools     String            // Comma-separated list of tool IDs
+  customFields     ToolCustomValue[]
+  reviews          Review[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model CustomField {
+  id          String            @id @default(uuid())
+  name        String            @unique
+  type        String            // 'text' | 'number' | 'boolean' | 'select'
+  options     String?           // Comma-separated options for select list
+  description String?
+  values      ToolCustomValue[]
+}
+
+model ToolCustomValue {
+  id            String      @id @default(uuid())
+  toolId        String
+  tool          Tool        @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  customFieldId String
+  customField   CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+  value         String      // Stringified value
+
+  @@unique([toolId, customFieldId])
+}
+
+model Category {
+  id              String     @id @default(uuid())
+  name            String     @unique
+  slug            String     @unique
+  parentId        String?    // For subcategories
+  parent          Category?  @relation("SubCategories", fields: [parentId], references: [id], onDelete: SetNull)
+  subcategories   Category[] @relation("SubCategories")
+  icon            String     // Emoji or lucide icon name
+  image           String?    // Cover image URL
+  description     String
+  visible         Boolean    @default(true)
+  metaTitle       String?
+  metaDescription String?
+}
+
+model ComparisonTemplate {
+  id       String @id @default(uuid())
+  name     String @unique
+  criteria String // JSON string of criteria labels (e.g. ["Accuracy", "Speed", "Price"])
+  summary  String // AI-generated default template summary or instruction
+  tools    String // Comma-separated list of tool IDs
+}
+
+model Article {
+  id              String            @id @default(uuid())
+  title           String
+  slug            String            @unique
+  excerpt         String
+  content         String
+  author          String
+  authorAvatar    String
+  date            DateTime          @default(now())
+  category        String
+  readTime        String
+  status          String            // 'Draft' | 'Scheduled' | 'Published'
+  tags            String            // Comma-separated list
+  featured        Boolean           @default(false)
+  metaTitle       String?
+  metaDescription String?
+  approvals       String            // Comma-separated admin names who approved
+  revisions       ArticleRevision[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+model ArticleRevision {
+  id        String   @id @default(uuid())
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  title     String
+  content   String
+  updatedBy String
+  createdAt DateTime @default(now())
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  toolId    String
+  tool      Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  author    String
+  avatar    String
+  rating    Int
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id                 String         @id @default(uuid())
+  name               String
+  email              String         @unique
+  password           String
+  avatar             String         @default("")
+  role               String         // 'Admin' | 'Moderator' | 'Editor' | 'Author' | 'Contributor' | 'User'
+  permissions        String         // Comma-separated permissions list
+  status             String         @default("Active") // 'Active' | 'Suspended'
+  savedTools         String         @default("") // Comma-separated
+  favorites          String         @default("") // Comma-separated
+  bookmarks          String         @default("") // Comma-separated
+  followedCategories String         @default("") // Comma-separated
+  readProgress       String         @default("{}") // JSON stringified
+  emailPreferences   String         @default("{}") // JSON stringified
+  createdAt          DateTime       @default(now())
+  activities         UserActivity[]
+}
+
+model UserActivity {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  details   String?
+  timestamp DateTime @default(now())
+}
+
+model AdCampaign {
+  id           String    @id @default(uuid())
+  name         String
+  platform     String    // 'AdSense' | 'Sponsored' | 'Banner'
+  placement    String    // 'Header' | 'Sidebar' | 'Inline'
+  content      String    // Code snippet or image URL
+  status       String    @default("Active") // 'Active' | 'Inactive'
+  startDate    DateTime?
+  endDate      DateTime?
+  impressions  Int       @default(0)
+  clicks       Int       @default(0)
+}
+
+model NewsletterSubscriber {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  name       String?
+  segment    String   @default("All") // 'All' | 'Developers' | 'Designers' | 'Writers'
+  dateJoined DateTime @default(now())
+}
+
+model PopupConfig {
+  id           String   @id @default(uuid())
+  name         String
+  type         String   // 'Promo' | 'Announcement' | 'EmailCapture'
+  content      String   // Markdown or HTML
+  trigger      String   // 'ExitIntent' | 'Timer' | 'Scroll'
+  triggerValue Float    @default(0.0)
+  active       Boolean  @default(true)
+  segment      String   @default("All")
+}
+
+model IntegrationSettings {
+  id           String @id @default(uuid())
+  providerName String @unique // 'OpenAI' | 'GoogleAnalytics' | 'Mailchimp' | 'Webhooks'
+  apiKey       String
+  status       String @default("Inactive") // 'Active' | 'Inactive'
+  configJson   String // Extra settings
+}
+
+model GlobalSettings {
+  id         String @id @default("global")
+  siteName   String @default("AI Trends Tools")
+  siteLogo   String @default("AI")
+  theme      String @default("dark")
+  navigation String // JSON representation of header menu
+  footer     String // JSON representation of footer menu
+  backupInfo String // JSON history of backups
+}
+
+model TrendPost {
+  id           String    @id @default(uuid())
+  author       String
+  authorAvatar String
+  content      String
+  timestamp    DateTime  @default(now())
+  likes        Int       @default(0)
+  liked        Boolean   @default(false)
+  tags         String    // Comma-separated list
+  toolMentions String    // Comma-separated list of tool IDs or slugs
+  status       String    @default("approved") // 'approved' | 'pending' | 'rejected'
+  comments     Comment[]
+}
+
+model Comment {
+  id           String    @id @default(uuid())
+  trendPostId  String
+  trendPost    TrendPost @relation(fields: [trendPostId], references: [id], onDelete: Cascade)
+  author       String
+  authorAvatar String
+  content      String
+  timestamp    DateTime  @default(now())
+  likes        Int       @default(0)
+  status       String    @default("approved") // 'approved' | 'pending' | 'rejected'
+}
+
+model NewsletterCampaign {
+  id       String    @id @default(uuid())
+  title    String
+  template String
+  segment  String
+  dateSent DateTime?
+  status   String    // 'Draft' | 'Scheduled' | 'Sent'
+}
